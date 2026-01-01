@@ -1,13 +1,13 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <Wire.h>
-#include <Adafruit_INA219.h>
+#include <Adafruit_INA228.h>
 #include <ArduinoOTA.h>
 #include "config.h"
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-Adafruit_INA219 ina219;
+Adafruit_INA228 ina228;
 
 unsigned long lastSend = 0;
 const long interval = 60000; // 1 Minute
@@ -47,7 +47,7 @@ void connectWiFi() {
 void reconnectMQTT() {
   while (!client.connected()) {
     Serial.print("Verbinde mit MQTT...");
-    String clientId = "ESP8266-INA219-";
+    String clientId = "ESP8266-INA228-";
     clientId += String(ESP.getChipId(), HEX);
 
     if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
@@ -71,13 +71,22 @@ void setup() {
   // I2C starten
   Wire.begin(SDA_PIN, SCL_PIN);
 
-  // INA219 initialisieren und kalibrieren
-  if (!ina219.begin()) {
-    Serial.println("INA219 nicht gefunden!");
+  // INA228 initialisieren und kalibrieren
+  if (!ina228.begin()) {
+    Serial.println("INA228 nicht gefunden!");
     while (1) { delay(10); }
   }
-  ina219.setCalibration_32V_2A();
-  Serial.println("INA219 bereit");
+  
+  // Shunt = 15 mΩ, max_current = 3.5 A (Puffer über 3A)
+  ina228.setShunt(0.015, 3.5);
+
+  ina228.setAveragingCount(INA228_COUNT_64);
+
+  // set the time over which to measure the current and bus voltage
+  ina228.setVoltageConversionTime(INA228_TIME_1052_us);
+  ina228.setCurrentConversionTime(INA228_TIME_1052_us);
+
+  Serial.println("INA228 bereit");
 
   // WLAN verbinden
   connectWiFi();
@@ -127,20 +136,20 @@ void loop() {
   }
   client.loop();
 
-  // INA219 auslesen und senden
+  // INA228 auslesen und senden
   if (millis() - lastSend > interval) {
     lastSend = millis();
 
-    float busVoltage = ina219.getBusVoltage_V();
-    float current_mA = ina219.getCurrent_mA();
-    float power_mW   = ina219.getPower_mW();
+    float shuntVoltage = ina228.getShuntVoltage_mV();
+    float current_mA = ina228.getCurrent_mA();
+    float power_mW   = shuntVoltage * current_mA;
 
-    Serial.print("V: "); Serial.print(busVoltage); Serial.print(" V, ");
+    Serial.print("V: "); Serial.print(shuntVoltage); Serial.print(" V, ");
     Serial.print("I: "); Serial.print(current_mA); Serial.print(" mA, ");
     Serial.print("P: "); Serial.println(power_mW);
 
-    client.publish(TOPIC_VOLTAGE, String(busVoltage,3).c_str(), true);
-    client.publish(TOPIC_CURRENT, String(current_mA,2).c_str(), true);
-    client.publish(TOPIC_POWER,   String(power_mW,2).c_str(), true);
+    client.publish(TOPIC_VOLTAGE, String(shuntVoltage,3).c_str(), true);
+    client.publish(TOPIC_CURRENT, String(current_mA,3).c_str(), true);
+    client.publish(TOPIC_POWER,   String(power_mW,3).c_str(), true);
   }
 }
