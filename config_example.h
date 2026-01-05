@@ -12,9 +12,11 @@
 #define MQTT_PASS   "Insert your MQTT password"   // optional, falls kein Passwort: ""
 
 // MQTT Topics
-#define TOPIC_VOLTAGE "sensor/ina219/voltage"
-#define TOPIC_CURRENT "sensor/ina219/current"
-#define TOPIC_POWER   "sensor/ina219/power"
+#define TOPIC_VOLTAGE "sensor/ina228/voltage"
+#define TOPIC_CURRENT "sensor/ina228/current"
+#define TOPIC_POWER   "sensor/ina228/power"
+#define TOPIC_SUNRISE "sensor/ina228/sunrise"
+#define TOPIC_SUNSET  "sensor/ina228/sunset"
 
 // I2C Pins
 #define SDA_PIN 4 // D2
@@ -22,5 +24,9 @@
 
 // OTA Passwort
 #define OTA_PASSWORD "Insert your OTA password"
+
+// Location
+#define LATITUDE   50.0000
+#define LONGITUDE  13.0000
 
 #endif
